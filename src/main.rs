@@ -1,6 +1,7 @@
 use std::io;
 
 use crate::data::load_token_csvs;
+use strategy::{EmaCross, SmaCross, MeanReversion, Momentum, Strategy};
 
 mod types;
 mod data;
@@ -74,8 +75,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Found files: ");
     for (filename, candles) in &files {
         println!("- {} ({} candles)", filename, candles.len());
-
         // 🧠 Here you'll call: backtest(&candles, ...)
+    }
+
+    // Example: Swap strategies easily
+    let mut strategies: Vec<Box<dyn Strategy>> = vec![
+        Box::new(EmaCross::new(9, 21)),
+        Box::new(SmaCross::new(10, 30)),
+        Box::new(MeanReversion::new(0.01)),
+        Box::new(Momentum::new(0.01)),
+    ];
+    println!("Available strategies: {}", strategies.len());
+    // Example usage: run each strategy on the first file's candles
+    if let Some((_filename, candles)) = files.iter().next() {
+        for (i, strat) in strategies.iter_mut().enumerate() {
+            println!("\nStrategy {}:", i + 1);
+            for candle in candles.iter().take(5) { // Just show first 5 for demo
+                let signal = strat.next(candle);
+                println!("Signal: {:?} at price {}", signal, candle.close);
+            }
+        }
     }
 
     Ok(())

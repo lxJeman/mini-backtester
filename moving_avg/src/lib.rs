@@ -20,6 +20,41 @@ pub fn moving_avg(data: &[u64], window: usize) -> Vec<f64> {
     result
 }
 
+pub struct Sma {
+    pub window: usize,
+    pub values: std::collections::VecDeque<f64>,
+    pub sum: f64,
+}
+
+impl Sma {
+    pub fn new(window: usize) -> Self {
+        Self {
+            window,
+            values: std::collections::VecDeque::with_capacity(window),
+            sum: 0.0,
+        }
+    }
+
+    pub fn next(&mut self, price: f64) -> f64 {
+        self.values.push_back(price);
+        self.sum += price;
+        if self.values.len() > self.window {
+            if let Some(removed) = self.values.pop_front() {
+                self.sum -= removed;
+            }
+        }
+        self.sum / self.values.len() as f64
+    }
+
+    pub fn get(&self) -> Option<f64> {
+        if self.values.len() == self.window {
+            Some(self.sum / self.window as f64)
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

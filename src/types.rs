@@ -11,6 +11,7 @@ pub struct Candle {
     pub period: f64, // 1, 5, 15, 30, 60, 120, 240, 740, 1440
 }
 
+#[derive(Debug)]
 pub enum Signal {
     Buy,
     Sell,

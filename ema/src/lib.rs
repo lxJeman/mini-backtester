@@ -20,6 +20,31 @@ pub fn ema(data: &[u64], a: f64) -> Vec<f64> {
     r
 }
 
+pub struct Ema {
+    pub alpha: f64,
+    pub value: Option<f64>,
+}
+
+impl Ema {
+    pub fn new(period: usize) -> Self {
+        let alpha = 2.0 / (period as f64 + 1.0);
+        Self { alpha, value: None }
+    }
+
+    pub fn next(&mut self, price: f64) -> f64 {
+        let new_ema = match self.value {
+            Some(prev) => self.alpha * price + (1.0 - self.alpha) * prev,
+            None => price,
+        };
+        self.value = Some(new_ema);
+        new_ema
+    }
+
+    pub fn get(&self) -> Option<f64> {
+        self.value
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

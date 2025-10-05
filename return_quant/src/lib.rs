@@ -47,6 +47,32 @@ pub fn log_return(data: &[u64]) -> Vec<f64> {
     returns_quant
 }
 
+pub struct Returns {
+    pub prev: Option<f64>,
+    pub last_return: Option<f64>,
+}
+
+impl Returns {
+    pub fn new() -> Self {
+        Self { prev: None, last_return: None }
+    }
+
+    pub fn next(&mut self, price: f64) -> Option<f64> {
+        let ret = match self.prev {
+            Some(p) if p != 0.0 => Some((price - p) / p),
+            Some(_) => Some(0.0),
+            None => None,
+        };
+        self.prev = Some(price);
+        self.last_return = ret;
+        ret
+    }
+
+    pub fn get(&self) -> Option<f64> {
+        self.last_return
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

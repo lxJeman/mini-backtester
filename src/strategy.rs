@@ -1,5 +1,8 @@
 use ema; // Import the ema crate
+use ema::Ema;
+use moving_avg::Sma;
 use crate::types::{Candle, Signal};
+use return_quant::Returns;
 
 
 pub trait Strategy {
@@ -7,57 +10,25 @@ pub trait Strategy {
 }
 
 pub struct EmaCross {
-    pub short_period: usize,
-    pub long_period: usize,
-    pub short_values: Vec<f64>,
-    pub long_values: Vec<f64>,
-    pub short_ema: Option<f64>,
-    pub long_ema: Option<f64>,
+    pub short_ema: Ema,
+    pub long_ema: Ema,
 }
 
 impl EmaCross {
     pub fn new(short_period: usize, long_period: usize) -> Self {
         Self {
-            short_period,
-            long_period,
-            short_values: Vec::with_capacity(short_period),
-            long_values: Vec::with_capacity(long_period),
-            short_ema: None,
-            long_ema: None,
+            short_ema: Ema::new(short_period),
+            long_ema: Ema::new(long_period),
         }
     }
 }
 
 impl Strategy for EmaCross {
     fn next(&mut self, candle: &Candle) -> Signal {
-        // Update rolling close prices
-        self.short_values.push(candle.close);
-        if self.short_values.len() > self.short_period {
-            self.short_values.remove(0);
-        }
-        self.long_values.push(candle.close);
-        if self.long_values.len() > self.long_period {
-            self.long_values.remove(0);
-        }
+        let short = self.short_ema.next(candle.close);
+        let long = self.long_ema.next(candle.close);
 
-        // Calculate smoothing factor alpha
-        let short_alpha = 2.0 / (self.short_period as f64 + 1.0);
-        let long_alpha = 2.0 / (self.long_period as f64 + 1.0);
-
-        // Update EMAs
-        if self.short_values.len() == self.short_period {
-            let prev_short_ema = self.short_ema.unwrap_or(self.short_values[0]);
-            let new_short_ema = short_alpha * candle.close + (1.0 - short_alpha) * prev_short_ema;
-            self.short_ema = Some(new_short_ema);
-        }
-        if self.long_values.len() == self.long_period {
-            let prev_long_ema = self.long_ema.unwrap_or(self.long_values[0]);
-            let new_long_ema = long_alpha * candle.close + (1.0 - long_alpha) * prev_long_ema;
-            self.long_ema = Some(new_long_ema);
-        }
-
-        // Only generate signals if both EMAs are available
-        match (self.short_ema, self.long_ema) {
+        match (self.short_ema.get(), self.long_ema.get()) {
             (Some(short), Some(long)) => {
                 if short > long {
                     Signal::Buy
@@ -68,6 +39,92 @@ impl Strategy for EmaCross {
                 }
             }
             _ => Signal::Hold, // Not enough data yet
+        }
+    }
+}
+
+pub struct SmaCross {
+    pub short_sma: Sma,
+    pub long_sma: Sma,
+}
+
+impl SmaCross {
+    pub fn new(short_period: usize, long_period: usize) -> Self {
+        Self {
+            short_sma: Sma::new(short_period),
+            long_sma: Sma::new(long_period),
+        }
+    }
+}
+
+impl Strategy for SmaCross {
+    fn next(&mut self, candle: &Candle) -> Signal {
+        let short = self.short_sma.next(candle.close);
+        let long = self.long_sma.next(candle.close);
+
+        match (self.short_sma.get(), self.long_sma.get()) {
+            (Some(short), Some(long)) => {
+                if short > long {
+                    Signal::Buy
+                } else if short < long {
+                    Signal::Sell
+                } else {
+                    Signal::Hold
+                }
+            }
+            _ => Signal::Hold, // Not enough data yet
+        }
+    }
+}
+
+pub struct MeanReversion {
+    pub returns: Returns,
+    pub threshold: f64,
+}
+
+impl MeanReversion {
+    pub fn new(threshold: f64) -> Self {
+        Self {
+            returns: Returns::new(),
+            threshold,
+        }
+    }
+}
+
+impl Strategy for MeanReversion {
+    fn next(&mut self, candle: &Candle) -> Signal {
+        let ret = self.returns.next(candle.close);
+        match ret {
+            Some(r) if r < -self.threshold => Signal::Buy,
+            Some(r) if r > self.threshold => Signal::Sell,
+            Some(_) => Signal::Hold,
+            None => Signal::Hold,
+        }
+    }
+}
+
+pub struct Momentum {
+    pub returns: Returns,
+    pub threshold: f64,
+}
+
+impl Momentum {
+    pub fn new(threshold: f64) -> Self {
+        Self {
+            returns: Returns::new(),
+            threshold,
+        }
+    }
+}
+
+impl Strategy for Momentum {
+    fn next(&mut self, candle: &Candle) -> Signal {
+        let ret = self.returns.next(candle.close);
+        match ret {
+            Some(r) if r > self.threshold => Signal::Buy,
+            Some(r) if r < -self.threshold => Signal::Sell,
+            Some(_) => Signal::Hold,
+            None => Signal::Hold,
         }
     }
 }
