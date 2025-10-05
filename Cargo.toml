@@ -1,0 +1,14 @@
+[package]
+name = "mini-backtester"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+moving_avg = {path = "moving_avg"}
+ema = {path = "ema"}
+return_quant = {path = "return_quant"}
+compound_growth = {path = "compound_growth"}
+sharp_ratio = {path = "sharp_ratio"}
+num-format = "0.4"
+csv = "1.3"
+serde = { version = "1.0", features = ["derive"] }
