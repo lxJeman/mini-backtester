@@ -1,7 +1,7 @@
 use std::io;
 
 use crate::data::load_token_csvs;
-use strategy::{EmaCross, SmaCross, MeanReversion, Momentum, Strategy};
+use strategy::{EmaCross, SmaCross, MeanReversion, Momentum, ATRBreakout, Strategy};
 use backtest::{backtest, BacktestResult};
 use trade_model::TradeModel;
 use metrics::compute_metrics;
@@ -88,6 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(SmaCross::new(10, 30)),
         Box::new(MeanReversion::new(0.01)),
         Box::new(Momentum::new(0.01)),
+        Box::new(ATRBreakout::new(10, 14, 0.01)),
     ];
 
     println!("Available strategies: {}", strategies.len());
@@ -102,6 +103,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Box::new(SmaCross::new(10, 30)),
             Box::new(MeanReversion::new(0.01)),
             Box::new(Momentum::new(0.01)),
+            Box::new(ATRBreakout::new(10, 14, 0.01)),
         ];
 
         for (i, strat) in fresh_strategies.iter_mut().enumerate() {

@@ -160,3 +160,57 @@ let mut strat = Bollinger::new(/* params */);
 
 - Add more advanced strategies or a factory for dynamic creation.
 - PRs welcome!
+
+---
+
+## 🚦 How to Use the App & Trigger Signals
+
+### Running the Backtester
+
+1. **Build and run:**
+   ```bash
+   cargo run
+   ```
+2. **Input the token name** when prompted (e.g., `ETCUSD`).
+3. The app will:
+   - Load all matching CSV files for that token.
+   - Run all registered strategies on each file.
+   - Print out trade counts, equity, Sharpe, drawdown, and P&L for each strategy.
+
+### How Strategies Work
+
+- Each strategy implements the `Strategy` trait:
+  ```rust
+  pub trait Strategy {
+      fn next(&mut self, candle: &Candle) -> Signal;
+  }
+  ```
+- On every new candle, the backtest loop calls `next(&mut self, candle)` for each strategy.
+- The returned `Signal` (`Buy`, `Sell`, or `Hold`) is passed to the trade model, which simulates trades and updates equity.
+
+### How to Test a New Strategy
+
+1. **Add your strategy** as described in the "How to Add a New Strategy" section.
+2. **Register it** in `strategy.rs`.
+3. **Add it to the strategies list** in `main.rs`:
+   ```rust
+   Box::new(MyStrategy::new(/* params */)),
+   ```
+4. **Run the app** and observe the printed results for your strategy.
+
+### How to Trigger Signals in Code
+
+- In your strategy’s `next` method, return `Signal::Buy` to open a long, `Signal::Sell` to close, or `Signal::Hold` to do nothing.
+- The trade model will only open a new position if not already in one, and will close it on a `Sell`.
+
+### Debugging and Logging
+
+- You can add `println!` statements in your strategy’s `next` method to debug logic or print intermediate values.
+- To test on a small dataset, limit the number of candles in the backtest loop (already done in the template).
+
+### Quick Dev Cycle
+
+- Edit your strategy, recompile (`cargo run`), and see results instantly.
+- Use the metrics output to compare performance across strategies and parameter sets.
+
+---
