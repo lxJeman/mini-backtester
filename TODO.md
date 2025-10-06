@@ -151,7 +151,7 @@ Create: `src/strategy.rs`
 
 ### 🔄 **Step 4: Trade Model (slippage, fees, capital)**
 
-Create: `src/trade_model.rs`
+Create: `src/trade_model.rs` + add balance starting at 1000$ (if balance hits 0 game over :()
 
 #### 📋 TODO:
 

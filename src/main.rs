@@ -2,10 +2,16 @@ use std::io;
 
 use crate::data::load_token_csvs;
 use strategy::{EmaCross, SmaCross, MeanReversion, Momentum, Strategy};
+use backtest::{backtest, BacktestResult};
+use trade_model::TradeModel;
+use metrics::compute_metrics;
 
 mod types;
 mod data;
 mod strategy;
+mod trade_model;
+mod backtest;
+mod metrics;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // EXAMPLE CODE FOR MATH LIBS
@@ -75,27 +81,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Found files: ");
     for (filename, candles) in &files {
         println!("- {} ({} candles)", filename, candles.len());
-        // 🧠 Here you'll call: backtest(&candles, ...)
     }
 
-    // Example: Swap strategies easily
     let mut strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(EmaCross::new(9, 21)),
         Box::new(SmaCross::new(10, 30)),
         Box::new(MeanReversion::new(0.01)),
         Box::new(Momentum::new(0.01)),
     ];
+
     println!("Available strategies: {}", strategies.len());
-    // Example usage: run each strategy on the first file's candles
-    if let Some((_filename, candles)) = files.iter().next() {
-        for (i, strat) in strategies.iter_mut().enumerate() {
+
+    // 🔁 NEW: loop through each file
+    for (filename, candles) in &files {
+        println!("\n--- Running strategies on file: {} ---", filename);
+
+        // Reset each strategy to a new instance for this file
+        let mut fresh_strategies: Vec<Box<dyn Strategy>> = vec![
+            Box::new(EmaCross::new(9, 21)),
+            Box::new(SmaCross::new(10, 30)),
+            Box::new(MeanReversion::new(0.01)),
+            Box::new(Momentum::new(0.01)),
+        ];
+
+        for (i, strat) in fresh_strategies.iter_mut().enumerate() {
             println!("\nStrategy {}:", i + 1);
-            for candle in candles.iter().take(5) { // Just show first 5 for demo
-                let signal = strat.next(candle);
-                println!("Signal: {:?} at price {}", signal, candle.close);
-            }
+            // Step 7: Run a full backtest on a small sample
+            let mut trade_model = TradeModel::new(1000.0, 0.001, 0.001, 1.0);
+            let result = backtest(&candles[..candles.len().min(100)], strat.as_mut(), &mut trade_model);
+            let metrics = compute_metrics(&result.equity_curve);
+            println!("Total trades: {}", result.trades.len());
+            println!("Final equity: {:.2}", result.equity_curve.last().map(|e| e.equity).unwrap_or(0.0));
+            println!("Sharpe ratio: {:.4}", metrics.sharpe_ratio);
+            println!("Max drawdown: {:.2}%", metrics.max_drawdown * 100.0);
+            println!("Total P&L: {:.2}", metrics.total_pnl);
         }
     }
+
 
     Ok(())
 }
