@@ -33,4 +33,8 @@ impl Strategy for EmaCross {
             _ => Signal::Hold,
         }
     }
+    
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }

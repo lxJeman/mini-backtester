@@ -1,7 +1,7 @@
 use std::io;
 
 use crate::data::load_token_csvs;
-use strategy::{EmaCross, SmaCross, MeanReversion, Momentum, ATRBreakout, Strategy};
+use strategy::{EmaCross, SmaCross, MeanReversion, Momentum, ATRBreakout, VolatilityTargeting, Strategy};
 use backtest::{backtest, BacktestResult};
 use trade_model::TradeModel;
 use metrics::compute_metrics;
@@ -89,6 +89,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(MeanReversion::new(0.01)),
         Box::new(Momentum::new(0.01)),
         Box::new(ATRBreakout::new(10, 14, 0.01)),
+        // Volatility Targeting with EMA Cross as base strategy
+        Box::new(VolatilityTargeting::new(
+            0.01,  // 1% target daily volatility
+            20,    // 20-day lookback for volatility calculation
+            Box::new(EmaCross::new(9, 21)), // Base strategy for signals
+            0.1,   // Minimum position multiplier (10% of normal size)
+            3.0,   // Maximum position multiplier (300% of normal size)
+        )),
     ];
 
     println!("Available strategies: {}", strategies.len());
@@ -104,19 +112,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Box::new(MeanReversion::new(0.01)),
             Box::new(Momentum::new(0.01)),
             Box::new(ATRBreakout::new(10, 14, 0.01)),
+            // Volatility Targeting with EMA Cross as base strategy
+            Box::new(VolatilityTargeting::new(
+                0.01,  // 1% target daily volatility
+                20,    // 20-day lookback for volatility calculation
+                Box::new(EmaCross::new(9, 21)), // Base strategy for signals
+                0.1,   // Minimum position multiplier (10% of normal size)
+                3.0,   // Maximum position multiplier (300% of normal size)
+            )),
         ];
 
         for (i, strat) in fresh_strategies.iter_mut().enumerate() {
-            println!("\nStrategy {}:", i + 1);
+            let strategy_name = match i {
+                0 => "EMA Cross (9,21)",
+                1 => "SMA Cross (10,30)", 
+                2 => "Mean Reversion",
+                3 => "Momentum",
+                4 => "ATR Breakout",
+                5 => "Volatility Targeting + EMA Cross",
+                _ => "Unknown Strategy",
+            };
+            
+            println!("\nStrategy {}: {}", i + 1, strategy_name);
+            
             // Step 7: Run a full backtest on a small sample
             let mut trade_model = TradeModel::new(1000.0, 0.001, 0.001, 1.0);
             let result = backtest(&candles[..candles.len().min(100)], strat.as_mut(), &mut trade_model);
             let metrics = compute_metrics(&result.equity_curve);
+            
             println!("Total trades: {}", result.trades.len());
             println!("Final equity: {:.2}", result.equity_curve.last().map(|e| e.equity).unwrap_or(0.0));
             println!("Sharpe ratio: {:.4}", metrics.sharpe_ratio);
             println!("Max drawdown: {:.2}%", metrics.max_drawdown * 100.0);
             println!("Total P&L: {:.2}", metrics.total_pnl);
+            
+            // Special output for volatility targeting strategy
+            if i == 5 {
+                if let Some(vol_strat) = strat.as_any().downcast_ref::<VolatilityTargeting>() {
+                    println!("Current position multiplier: {:.2}x", vol_strat.get_position_multiplier());
+                    println!("Current realized volatility: {:.4} ({:.2}%)", 
+                        vol_strat.get_realized_volatility(), 
+                        vol_strat.get_realized_volatility() * 100.0);
+                }
+            }
         }
     }
 

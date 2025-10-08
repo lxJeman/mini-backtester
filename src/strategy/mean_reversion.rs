@@ -26,4 +26,8 @@ impl Strategy for MeanReversion {
             None => Signal::Hold,
         }
     }
+    
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
